@@ -318,12 +318,13 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
 
     // https://www.coingecko.com/en/coins/ethereum
     // For June 02, 2018
-    //$0.01 = 1 token => $ 1,000 = 1.7089051044995474 ETH =>
-    // 1,000 / 0.01 = 100,000 token = 1.7089051044995474 ETH =>
-    //100,000 token = 1.7089051044995474 ETH =>
-    //1 ETH = 100,000/1.7089051044995474 = 58517
-    uint256 public rate  = 58517; // for $0.01
-    //uint256 public rate  = 10; // for test's
+    //$0.01 = 1 token => $ 1,000 = 2,1541510490715607 ETH =>
+    // 1,000 / 0.01 = 100,000 token = 2,1541510490715607 ETH =>
+    //100,000 token = 2,1541510490715607 ETH =>
+    //1 ETH = 100,000/2,1541510490715607 = 46422
+
+    //uint256 public rate  = 46422; // for $0.01
+    uint256 public rate  = 10; // for test's
 
     mapping (address => uint256) public deposited;
 
@@ -333,8 +334,8 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     uint256 public fundFoundation = 1000500000 * (10 ** uint256(decimals));
     uint256 public       fundTeam = 2100000000 * (10 ** uint256(decimals));
 
-    uint256 limitWeekZero = 2500000000 * (10 ** uint256(decimals));
-    uint256 limitWeekOther = 200000000 * (10 ** uint256(decimals));
+    uint256 limitWeekZero = 2600000000 * (10 ** uint256(decimals));
+    uint256 limitWeekOther = 2500000000 * (10 ** uint256(decimals));
     //uint256 limitWeekZero = 20 * (10 ** uint256(decimals)); // for tests
     //uint256 limitWeekOther = 10 * (10 ** uint256(decimals)); // for tests
 
@@ -342,9 +343,9 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     address public addressFundFoundation = 0xfe3859CB2F9d6f448e9959e6e8Fe0be841c62459;
     address public addressFundTeam = 0xfeD3B7eaDf1bD15FbE3aA1f1eAfa141efe0eeeb2;
 
-    uint256 public startTime = 1530720000; // Wed, 04 Jul 2018 16:00:00 GMT
+    uint256 public startTime = 1533312000; // Fri, 03 Aug 2018 16:00:00 GMT
     // Eastern Standard Time (EST) + 4 hours = Greenwich Mean Time (GMT))
-    uint numberWeeks = 46;
+    uint numberPeriods = 4;
 
 
     uint256 public countInvestor;
@@ -352,6 +353,7 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     event TokenPurchase(address indexed beneficiary, uint256 value, uint256 amount);
     event TokenLimitReached(uint256 tokenRaised, uint256 purchasedToken);
     event MinWeiLimitReached(address indexed sender, uint256 weiAmount);
+    event CurrentPeriod(uint period);
     event Finalized();
 
     constructor(address _owner) public
@@ -359,7 +361,7 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     {
         require(_owner != address(0));
         owner = _owner;
-        //owner = msg.sender; // for test's
+        owner = msg.sender; // for test's
         transfersEnabled = true;
         mintingFinished = false;
         totalSupply = INITIAL_SUPPLY;
@@ -392,40 +394,48 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
 
     function getTotalAmountOfTokens(uint256 _weiAmount) internal returns (uint256) {
         uint256 currentDate = now;
-        //currentDate = 1533513600; // (06 Aug 2018 00:00:00 GMT) for test's
-        //currentDate = 1534694400; // (19 Aug 2018 00:00:00 GMT) for test's
+        currentDate = 1533513600; // (06 Aug 2018 00:00:00 GMT) for test's
+        //currentDate = 1540051200; // (20 Oct 2018 00:00:00 GMT) for test's
+        tokenAllocated = tokenAllocated.add(2700000000 * (10 ** uint256(decimals)));
+
         uint currentPeriod = getPeriod(currentDate);
         uint256 amountOfTokens = 0;
         if(currentPeriod < 100){
             if(currentPeriod == 0){
-                amountOfTokens = _weiAmount.mul(rate).div(4);
+                amountOfTokens = _weiAmount.mul(rate).mul(2);
                 if (tokenAllocated.add(amountOfTokens) > limitWeekZero) {
-                    emit TokenLimitReached(tokenAllocated, amountOfTokens);
-                    return 0;
+                    currentPeriod = currentPeriod.add(1);
                 }
             }
-            for(uint j = 0; j < numberWeeks; j++){
-                if(currentPeriod == (j + 1)){
-                    amountOfTokens = _weiAmount.mul(rate).div(5+j*25);
-                    if (tokenAllocated.add(amountOfTokens) > limitWeekZero + limitWeekOther.mul(j+1)) {
-                        emit TokenLimitReached(tokenAllocated, amountOfTokens);
-                        return 0;
-                    }
+            if(0 < currentPeriod && currentPeriod < numberPeriods + 1){
+                while(currentPeriod < defineCurrentPeriod(currentPeriod, _weiAmount)){
+                    currentPeriod = currentPeriod.add(1);
                 }
+                amountOfTokens = _weiAmount.mul(rate).div(currentPeriod);
             }
         }
+        emit CurrentPeriod(currentPeriod);
         return amountOfTokens;
     }
 
+    function defineCurrentPeriod(uint _currentPeriod, uint256 _weiAmount) public view returns (uint) {
+        uint256 amountOfTokens = _weiAmount.mul(rate).div(_currentPeriod);
+        if (tokenAllocated.add(amountOfTokens) > limitWeekZero + limitWeekOther.mul(_currentPeriod)) {
+            return _currentPeriod.add(1);
+        } else {
+            return _currentPeriod;
+        }
+    }
+
     function getPeriod(uint256 _currentDate) public view returns (uint) {
-        if( startTime > _currentDate && _currentDate > startTime + 365 days){
+        if( startTime > _currentDate && _currentDate > startTime + 90 days){
             return 100;
         }
-        if( startTime <= _currentDate && _currentDate <= startTime + 43 days){
+        if( startTime <= _currentDate && _currentDate <= startTime + 30 days){
             return 0;
         }
-        for(uint j = 0; j < numberWeeks; j++){
-            if( startTime + 43 days + j*7 days <= _currentDate && _currentDate <= startTime + 43 days + (j+1)*7 days){
+        for(uint j = 0; j < numberPeriods; j++){
+            if( startTime + 30 days + j*15 days <= _currentDate && _currentDate <= startTime + 30 days + (j+1)*15 days){
                 return j + 1;
             }
         }
