@@ -317,14 +317,13 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     using SafeMath for uint256;
 
     // https://www.coingecko.com/en/coins/ethereum
-    // For June 02, 2018
-    //$0.01 = 1 token => $ 1,000 = 2,1541510490715607 ETH =>
+    //$0.01 = 1 token & $ 1,000 = 2,1541510490715607 ETH =>
     // 1,000 / 0.01 = 100,000 token = 2,1541510490715607 ETH =>
     //100,000 token = 2,1541510490715607 ETH =>
     //1 ETH = 100,000/2,1541510490715607 = 46422
 
-    //uint256 public rate  = 46422; // for $0.01
-    uint256 public rate  = 10; // for test's
+    uint256 public rate  = 46422; // for $0.01
+    //uint256 public rate  = 10; // for test's
 
     mapping (address => uint256) public deposited;
 
@@ -334,10 +333,10 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     uint256 public fundFoundation = 1000500000 * (10 ** uint256(decimals));
     uint256 public       fundTeam = 2100000000 * (10 ** uint256(decimals));
 
-    uint256 limitWeekZero = 2600000000 * (10 ** uint256(decimals));
-    uint256 limitWeekOther = 2500000000 * (10 ** uint256(decimals));
-    //uint256 limitWeekZero = 20 * (10 ** uint256(decimals)); // for tests
-    //uint256 limitWeekOther = 10 * (10 ** uint256(decimals)); // for tests
+    uint256 limitWindowZero = 1 * 10**9 * (10 ** uint256(decimals));
+    uint256 limitWindowOther = 1 * 10**9 * (10 ** uint256(decimals));
+    //uint256 limitWindowZero = 20 * (10 ** uint256(decimals)); // for tests
+    //uint256 limitWindowOther = 10 * (10 ** uint256(decimals)); // for tests
 
     address public addressFundReserve = 0x67446E0673418d302dB3552bdF05363dB5Fda9Ce;
     address public addressFundFoundation = 0xfe3859CB2F9d6f448e9959e6e8Fe0be841c62459;
@@ -361,7 +360,7 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     {
         require(_owner != address(0));
         owner = _owner;
-        owner = msg.sender; // for test's
+        //owner = msg.sender; // for test's
         transfersEnabled = true;
         mintingFinished = false;
         totalSupply = INITIAL_SUPPLY;
@@ -394,20 +393,19 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
 
     function getTotalAmountOfTokens(uint256 _weiAmount) internal returns (uint256) {
         uint256 currentDate = now;
-        currentDate = 1533513600; // (06 Aug 2018 00:00:00 GMT) for test's
+        //currentDate = 1533513600; // (06 Aug 2018 00:00:00 GMT) for test's
         //currentDate = 1540051200; // (20 Oct 2018 00:00:00 GMT) for test's
-        tokenAllocated = tokenAllocated.add(2700000000 * (10 ** uint256(decimals)));
-
-        uint currentPeriod = getPeriod(currentDate);
+        uint currentPeriod = 0;
+        currentPeriod = getPeriod(currentDate);
         uint256 amountOfTokens = 0;
         if(currentPeriod < 100){
             if(currentPeriod == 0){
                 amountOfTokens = _weiAmount.mul(rate).mul(2);
-                if (tokenAllocated.add(amountOfTokens) > limitWeekZero) {
+                if (tokenAllocated.add(amountOfTokens) > limitWindowZero) {
                     currentPeriod = currentPeriod.add(1);
                 }
             }
-            if(0 < currentPeriod && currentPeriod < numberPeriods + 1){
+            if(0 < currentPeriod && currentPeriod < (numberPeriods + 1)){
                 while(currentPeriod < defineCurrentPeriod(currentPeriod, _weiAmount)){
                     currentPeriod = currentPeriod.add(1);
                 }
@@ -420,7 +418,8 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
 
     function defineCurrentPeriod(uint _currentPeriod, uint256 _weiAmount) public view returns (uint) {
         uint256 amountOfTokens = _weiAmount.mul(rate).div(_currentPeriod);
-        if (tokenAllocated.add(amountOfTokens) > limitWeekZero + limitWeekOther.mul(_currentPeriod)) {
+        if(_currentPeriod == 4) {return 4;}
+        if (tokenAllocated.add(amountOfTokens) > limitWindowZero + limitWindowOther.mul(_currentPeriod)) {
             return _currentPeriod.add(1);
         } else {
             return _currentPeriod;
@@ -454,6 +453,8 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
         balances[addressFundTeam] = balances[addressFundTeam].add(fundTeam);
         balances[addressFundReserve] = balances[addressFundReserve].add(fundReserve);
         balances[addressFundFoundation] = balances[addressFundFoundation].add(fundFoundation);
+
+        //tokenAllocated = tokenAllocated.add(12300000000 * (10 ** uint256(decimals))); //for test's
 
         result = true;
     }

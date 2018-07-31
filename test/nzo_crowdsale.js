@@ -7,9 +7,9 @@ contract('NZOCrowdsale', (accounts) => {
     //var owner = "0xbcEDB2FAD161284807A4760DDd7Ed92e04CA8dff";
     var owner = accounts[0]; // for test
 
-    var rate = Number(10/4);
+    var rate = Number(10*2);
     var buyWei = Number(1 * 10**18);
-    var rateNew = Number(10/4);
+    var rateNew = Number(10*2);
     var buyWeiNew = 6 * 10**17;
     var buyWeiMin = 1 * 10**15;
     var buyWeiLimitWeekZero = Number(8 * 10**18);
