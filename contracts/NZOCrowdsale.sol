@@ -326,6 +326,8 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     //uint256 public rate  = 10; // for test's
 
     mapping (address => uint256) public deposited;
+    mapping (address => uint256) public paidTokens;
+    mapping (address => bool) public contractAdmins;
 
     uint256 public constant INITIAL_SUPPLY = 21 * 10**9 * (10 ** uint256(decimals));
     uint256 public    fundForSale = 12600 * 10**6 * (10 ** uint256(decimals));
@@ -341,6 +343,8 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     address public addressFundReserve = 0x67446E0673418d302dB3552bdF05363dB5Fda9Ce;
     address public addressFundFoundation = 0xfe3859CB2F9d6f448e9959e6e8Fe0be841c62459;
     address public addressFundTeam = 0xfeD3B7eaDf1bD15FbE3aA1f1eAfa141efe0eeeb2;
+
+    address public bufferWallet = 0x09618fB091417c08BA74c9CFC65bB2A81F080300;
 
     uint256 public startTime = 1533312000; // Fri, 03 Aug 2018 16:00:00 GMT
     // Eastern Standard Time (EST) + 4 hours = Greenwich Mean Time (GMT))
@@ -380,7 +384,8 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
         if (tokens == 0) {revert();}
         weiRaised = weiRaised.add(weiAmount);
         tokenAllocated = tokenAllocated.add(tokens);
-        mint(_investor, tokens, owner);
+        mint(bufferWallet, tokens, owner);
+        paidTokens[_investor] = paidTokens[_investor].add(tokens);
 
         emit TokenPurchase(_investor, weiAmount, tokens);
         if (deposited[_investor] == 0) {
@@ -445,6 +450,10 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
         deposited[investor] = deposited[investor].add(msg.value);
     }
 
+    function paidTokensOf(address _owner) public constant returns (uint256) {
+        return paidTokens[_owner];
+    }
+
     function mintForOwner(address _walletOwner) internal returns (bool result) {
         result = false;
         require(_walletOwner != address(0));
@@ -487,6 +496,35 @@ contract NZOCrowdsale is Ownable, Crowdsale, MintableToken {
     function setRate(uint256 _newRate) external onlyOwner returns (bool){
         require(_newRate > 0);
         rate = _newRate;
+        return true;
+    }
+
+    /**
+    * @dev Add an contract admin
+    */
+    function setContractAdmin(address _admin, bool _isAdmin) public onlyOwner {
+        contractAdmins[_admin] = _isAdmin;
+    }
+
+    modifier onlyOwnerOrAdmin() {
+        require(msg.sender == owner || contractAdmins[msg.sender] || msg.sender == bufferWallet);
+        _;
+    }
+
+    function batchTransfer(address[] _recipients, uint256[] _values) external onlyOwnerOrAdmin returns (bool) {
+        require( _recipients.length > 0 && _recipients.length == _values.length);
+        uint256 total = 0;
+        for(uint i = 0; i < _values.length; i++){
+            total = total.add(_values[i]);
+        }
+        require(total <= balanceOf(msg.sender));
+        for(uint j = 0; j < _recipients.length; j++){
+            transfer(_recipients[j], _values[j]);
+            require(0 <= _values[j]);
+            require(_values[j] <= paidTokens[_recipients[j]]);
+            paidTokens[_recipients[j]].sub(_values[j]);
+            emit Transfer(msg.sender, _recipients[j], _values[j]);
+        }
         return true;
     }
 }

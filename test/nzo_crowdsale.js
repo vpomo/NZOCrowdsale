@@ -37,7 +37,7 @@ contract('NZOCrowdsale', (accounts) => {
     it('verification of receiving Ether', async ()  => {
 
         var tokenAllocatedBefore = await contract.tokenAllocated.call();
-        var balanceAccountTwoBefore = await contract.balanceOf(accounts[2]);
+        var balanceAccountTwoBefore = await contract.paidTokensOf(accounts[2]);
         var weiRaisedBefore = await contract.weiRaised.call();
         //console.log("tokenAllocatedBefore = " + tokenAllocatedBefore);
 
@@ -48,7 +48,7 @@ contract('NZOCrowdsale', (accounts) => {
         assert.equal(0, tokenAllocatedBefore);
         //assert.equal(Number(rate*buyWei), Number(tokenAllocatedAfter));
 
-       var balanceAccountTwoAfter = await contract.balanceOf(accounts[2]);
+       var balanceAccountTwoAfter = await contract.paidTokensOf(accounts[2]);
        //console.log("balanceAccountTwoAfter = " + balanceAccountTwoAfter);
         assert.isTrue(balanceAccountTwoBefore < balanceAccountTwoAfter);
         assert.equal(0, balanceAccountTwoBefore);
@@ -64,9 +64,9 @@ contract('NZOCrowdsale', (accounts) => {
         //console.log("DepositedAfter = " + depositedAfter);
         assert.equal(buyWei, depositedAfter);
 
-        var balanceAccountThreeBefore = await contract.balanceOf(accounts[3]);
+        var balanceAccountThreeBefore = await contract.paidTokensOf(accounts[3]);
         await contract.buyTokens(accounts[3],{from:accounts[3], value:buyWeiNew});
-        var balanceAccountThreeAfter = await contract.balanceOf(accounts[3]);
+        var balanceAccountThreeAfter = await contract.paidTokensOf(accounts[3]);
         assert.isTrue(balanceAccountThreeBefore < balanceAccountThreeAfter);
         assert.equal(0, balanceAccountThreeBefore);
         //console.log("balanceAccountThreeAfter = " + balanceAccountThreeAfter);
@@ -111,40 +111,11 @@ contract('NZOCrowdsale', (accounts) => {
         assert.equal(100, period);
     });
 
-    it('verification claim tokens', async ()  => {
-        var balanceAccountOneBefore = await contract.balanceOf(accounts[1]);
-        assert.equal(0, balanceAccountOneBefore);
-        await contract.buyTokens(accounts[1],{from:accounts[1], value:buyWei});
-        var balanceAccountOneAfter = await contract.balanceOf(accounts[1]);
-        await contract.transfer(contract.address,balanceAccountOneAfter,{from:accounts[1]});
-        var balanceContractBefore = await contract.balanceOf(contract.address);
-        assert.equal(buyWei*rate, balanceContractBefore);
-        //console.log("balanceContractBefore = " + balanceContractBefore);
-        var balanceAccountAfter = await contract.balanceOf(accounts[1]);
-        assert.equal(0, balanceAccountAfter);
-        var balanceOwnerBefore = await contract.balanceOf(owner);
-        await contract.claimTokens(contract.address,{from:accounts[0]});
-        var balanceContractAfter = await contract.balanceOf(contract.address);
-        assert.equal(0, balanceContractAfter);
-        var balanceOwnerAfter = await contract.balanceOf(owner);
-        assert.equal(true, balanceOwnerBefore<balanceOwnerAfter);
-    });
-
     it('verification tokens limit min amount', async ()  => {
         var numberTokensMinWey = await contract.validPurchaseTokens.call(buyWeiMin);
         //console.log("numberTokensMinWey = " + numberTokensMinWey);
         assert.equal(0, Number(numberTokensMinWey));
     });
-
-/*
-    it('checking the limit of the amount of tokens by stages of sales', async ()  => {
-        //var numberTokensLimit = await contract.validPurchaseTokens.call(buyWeiLimitWeekZero); //test time week Zero
-        //assert.equal(0, Number(numberTokensLimit));
-        var numberTokensLimit = await contract.validPurchaseTokens.call(buyWeiLimitWeekOther); //test time week #1
-        assert.equal(24e18, Number(numberTokensLimit));
-        //console.log("numberTokensLimit = " + numberTokensLimit);
-    });
-*/
 
 });
 
